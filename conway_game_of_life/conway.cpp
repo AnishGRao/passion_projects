@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 #include <curses.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <cstdlib>
 // single square Class declaration
 class cell;
@@ -9,7 +10,6 @@ int sleeptime;
 bool grid = 0;
 // board dec/init (resize possible in inputfile) object
 std::vector<std::vector<cell>> old_board(board_size, std::vector<cell>(board_size)), new_board(board_size, std::vector<cell>(board_size));
-
 // single square Class initialization
 class cell {
 public:
@@ -37,6 +37,7 @@ public:
 			new_board[row][col].alive = 1;
 		else if (num_alive_neighbors > 3)
 			new_board[row][col].alive = 0;
+
 		new_board[row][col].img[0] = new_board[row][col].alive ? 'X' : ' ';
 	}
 };
@@ -104,6 +105,7 @@ void print_game() {
 }
 
 void row_operation(int rownum) {
+	//int rownum = *((int *) (&_rownum));
 	for (int i = 1; i < board_size - 1; i++) {
 		old_board[rownum][i].execute();
 	}
@@ -111,14 +113,27 @@ void row_operation(int rownum) {
 
 void start_game(char * argv) {
 	int iter_num = atoi(argv);
+
+	std::vector<std::thread> thread_vec;
+
 	for (int j = 0; j < (iter_num ? : 10); j++) {
+
+		thread_vec.reserve(board_size - 2);
+
 		for (int i = 1; i < board_size - 1; i++)
-			row_operation(i);
+			thread_vec.emplace_back(row_operation, i);
+
+		for (auto & th : thread_vec)
+			if (th.joinable())
+				th.join();
+
 		old_board = new_board;
 		usleep(100000);
 		erase();
 		// clear();
 		print_game();
+
+		thread_vec.clear();
 	}
 }
 
