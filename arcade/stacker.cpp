@@ -2,9 +2,8 @@
 #include <cstdlib>
 #include <curses.h>
 #include <unistd.h>
-
 // initial board state
-std::vector<std::vector<bool>> filled(11, std::vector<bool>(7, 0));
+std::vector<std::bitset<7>> filled(11);
 char present = 'X', blank = ' ';
 int cRow = 10;
 int sCol = 0;
@@ -27,9 +26,9 @@ void print_board()
 	for (auto i = filled.begin(); i != filled.end(); i++)
 	{
 		printw("| ");
-		for (auto j = (*i).begin(); j != (*i).end(); j++)
+		for (int j = 0; j < 7; j++)
 		{
-			if (*j)
+			if ((*i)[j])
 			{
 				attron(COLOR_PAIR(1));
 				printw("%c", present);
@@ -53,20 +52,6 @@ void print_board()
 	printw("\n");
 	refresh();
 }
-
-//non-blocking check on the keyboard press
-int kbhit(void)
-{
-	int ch = getch();
-
-	if (ch != ERR) {
-		ungetch(ch);
-		return 1;
-	}
-	else {
-		return 0;
-	}
-}
 bool clicked = false;
 void game_loop() {
 	//lets optimize!
@@ -83,11 +68,23 @@ void game_loop() {
 		usleep(speed);
 		ch = getch();
 		if (ch != ERR) {
+			if (cRow != 10) {
+				for (int i = sCol; i < sCol + stackSize; i++) {
+					if (!filled[cRow + 1][i]) {
+						filled[cRow][i] = 0;
+					}
+				}
+			}
+			if (!(filled[cRow].any())) {
+				erase(); clear(); printw("YOU LOSE!\n"); refresh(); sleep(2); endwin(); exit(0);
+				exit(0);
+			}
 			cRow--, sCol = 0;
 			erase();
 			switch (cRow) {
 			case 7: stackSize = 2; break;
 			case 1: stackSize = 1; break;
+			case -1: erase(); clear(); printw("YOU WIN!\n"); refresh(); sleep(2); endwin(); exit(0);
 			default: break;
 			}
 			speed -= 90000;
@@ -109,10 +106,6 @@ void game_loop() {
 	//void * stop;
 	//pthread_join(user_input, &stop);
 }
-
-
-
-
 int main()
 {
 	initscr();
